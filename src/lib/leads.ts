@@ -13,11 +13,6 @@ export interface Lead {
 
 const STORAGE_KEY = "crm_leads";
 
-function getDefaultLeads(): Lead[] {
-  const { MOCK_LEADS } = require("@/data/mockLeads");
-  return MOCK_LEADS;
-}
-
 export function getLeads(): Lead[] {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) return JSON.parse(stored);
