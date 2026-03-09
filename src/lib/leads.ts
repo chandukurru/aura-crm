@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export type LeadStatus = "new" | "contacted" | "converted";
 
 export interface Lead {
@@ -7,33 +9,60 @@ export interface Lead {
   source: string;
   status: LeadStatus;
   notes: string;
-  createdAt: string;
-  followUp?: string;
+  created_at: string;
+  follow_up: string | null;
+  updated_at: string;
 }
 
-const STORAGE_KEY = "crm_leads";
-
-export function getLeads(): Lead[] {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) return JSON.parse(stored);
-  return [];
+export async function getLeads(): Promise<Lead[]> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Lead[];
 }
 
-export function initLeads(defaults: Lead[]) {
-  if (!localStorage.getItem(STORAGE_KEY)) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
-  }
+export async function getLeadById(id: string): Promise<Lead | null> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Lead | null;
 }
 
-export function saveLead(lead: Lead) {
-  const leads = getLeads();
-  const idx = leads.findIndex((l) => l.id === lead.id);
-  if (idx >= 0) leads[idx] = lead;
-  else leads.unshift(lead);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+export async function createLead(lead: {
+  name: string;
+  email: string;
+  source: string;
+  notes?: string;
+}): Promise<Lead> {
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({ name: lead.name, email: lead.email, source: lead.source, notes: lead.notes || "" })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Lead;
 }
 
-export function deleteLead(id: string) {
-  const leads = getLeads().filter((l) => l.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+export async function updateLead(id: string, updates: Partial<Pick<Lead, "status" | "notes" | "follow_up">>): Promise<Lead> {
+  const { data, error } = await supabase
+    .from("leads")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Lead;
+}
+
+export async function deleteLead(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("leads")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 }
