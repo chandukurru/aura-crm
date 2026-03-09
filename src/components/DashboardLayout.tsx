@@ -1,24 +1,39 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AppSidebar from "@/components/AppSidebar";
 import TopNavbar from "@/components/TopNavbar";
 import ParticleBackground from "@/components/ParticleBackground";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (!localStorage.getItem("crm_auth")) {
-      navigate("/");
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/");
+      }
+      setLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) navigate("/");
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
+
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-background relative">

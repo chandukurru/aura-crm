@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Calendar, Mail, Globe, StickyNote, Bell } from "lucide-react";
-import { getLeads, saveLead, Lead, LeadStatus } from "@/lib/leads";
+import { getLeadById, updateLead, Lead, LeadStatus } from "@/lib/leads";
 import { toast } from "sonner";
 
 const statusColors: Record<LeadStatus, string> = {
@@ -19,38 +19,50 @@ export default function LeadDetailPage() {
   const [followUp, setFollowUp] = useState("");
 
   useEffect(() => {
-    const found = getLeads().find((l) => l.id === id);
-    if (found) {
-      setLead(found);
-      setFollowUp(found.followUp || "");
-    } else {
-      navigate("/leads");
-    }
+    if (!id) return;
+    getLeadById(id).then((found) => {
+      if (found) {
+        setLead(found);
+        setFollowUp(found.follow_up || "");
+      } else {
+        navigate("/leads");
+      }
+    });
   }, [id, navigate]);
 
   if (!lead) return null;
 
-  const updateStatus = (status: LeadStatus) => {
-    const updated = { ...lead, status };
-    saveLead(updated);
-    setLead(updated);
-    toast.success("Status updated");
+  const handleUpdateStatus = async (status: LeadStatus) => {
+    try {
+      const updated = await updateLead(lead.id, { status });
+      setLead(updated);
+      toast.success("Status updated");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
-  const addNote = () => {
+  const addNote = async () => {
     if (!note.trim()) return;
-    const updated = { ...lead, notes: lead.notes ? `${lead.notes}\n---\n${note}` : note };
-    saveLead(updated);
-    setLead(updated);
-    setNote("");
-    toast.success("Note added");
+    try {
+      const newNotes = lead.notes ? `${lead.notes}\n---\n${note}` : note;
+      const updated = await updateLead(lead.id, { notes: newNotes });
+      setLead(updated);
+      setNote("");
+      toast.success("Note added");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
-  const saveFollowUp = () => {
-    const updated = { ...lead, followUp };
-    saveLead(updated);
-    setLead(updated);
-    toast.success("Follow-up saved");
+  const saveFollowUp = async () => {
+    try {
+      const updated = await updateLead(lead.id, { follow_up: followUp || null });
+      setLead(updated);
+      toast.success("Follow-up saved");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   return (
@@ -75,7 +87,7 @@ export default function LeadDetailPage() {
           </div>
           <select
             value={lead.status}
-            onChange={(e) => updateStatus(e.target.value as LeadStatus)}
+            onChange={(e) => handleUpdateStatus(e.target.value as LeadStatus)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer focus:outline-none ${statusColors[lead.status]}`}
           >
             <option value="new">New</option>
@@ -86,11 +98,10 @@ export default function LeadDetailPage() {
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="w-3.5 h-3.5" />
-          Created {new Date(lead.createdAt).toLocaleDateString()}
+          Created {new Date(lead.created_at).toLocaleDateString()}
         </div>
       </motion.div>
 
-      {/* Follow-up */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-6">
         <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 mb-3">
           <Bell className="w-4 h-4" /> Follow-up Reminder
@@ -113,7 +124,6 @@ export default function LeadDetailPage() {
         </div>
       </motion.div>
 
-      {/* Notes */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-6">
         <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 mb-3">
           <StickyNote className="w-4 h-4" /> Notes

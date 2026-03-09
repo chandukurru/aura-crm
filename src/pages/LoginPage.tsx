@@ -3,31 +3,42 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Zap, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("admin@crm.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      if (email === "admin@crm.com" && password === "admin123") {
-        localStorage.setItem("crm_auth", "true");
-        navigate("/dashboard");
-        toast.success("Welcome back!");
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        toast.success("Account created! Check your email to confirm.");
       } else {
-        toast.error("Invalid credentials");
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Welcome back!");
+        navigate("/dashboard");
       }
+    } catch (err: any) {
+      toast.error(err.message || "Authentication failed");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Gradient BG */}
       <div className="absolute inset-0 gradient-primary opacity-90" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,transparent_20%,hsl(var(--background))_70%)]" />
 
@@ -41,11 +52,15 @@ export default function LoginPage() {
           <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 neon-glow">
             <Zap className="w-7 h-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome to LeadFlow</h1>
-          <p className="text-muted-foreground text-sm mt-1">Sign in to your CRM dashboard</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {isSignUp ? "Create Account" : "Welcome to LeadFlow"}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {isSignUp ? "Sign up for your CRM dashboard" : "Sign in to your CRM dashboard"}
+          </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <input
@@ -66,6 +81,7 @@ export default function LoginPage() {
               placeholder="Password"
               className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none input-glow transition-all"
               required
+              minLength={6}
             />
           </div>
           <motion.button
@@ -75,13 +91,16 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 rounded-lg gradient-primary text-primary-foreground font-semibold disabled:opacity-60 transition-all neon-glow"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Please wait..." : isSignUp ? "Sign Up" : "Sign In"}
           </motion.button>
         </form>
 
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          Demo: admin@crm.com / admin123
-        </p>
+        <button
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-foreground transition-colors"
+        >
+          {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+        </button>
       </motion.div>
     </div>
   );

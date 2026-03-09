@@ -1,6 +1,8 @@
 import { Moon, Sun, Bell, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface TopNavbarProps {
   darkMode: boolean;
@@ -10,8 +12,9 @@ interface TopNavbarProps {
 export default function TopNavbar({ darkMode, onToggleDark }: TopNavbarProps) {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("crm_auth");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Signed out");
     navigate("/");
   };
 

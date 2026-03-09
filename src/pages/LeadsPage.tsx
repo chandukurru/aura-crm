@@ -1,9 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, Plus, Trash2, Eye } from "lucide-react";
-import { getLeads, deleteLead, saveLead, Lead, LeadStatus, initLeads } from "@/lib/leads";
-import { MOCK_LEADS } from "@/data/mockLeads";
+import { getLeads, deleteLead as deleteLeadApi, updateLead, Lead, LeadStatus } from "@/lib/leads";
 import { toast } from "sonner";
 
 const statusColors: Record<LeadStatus, string> = {
@@ -13,13 +12,18 @@ const statusColors: Record<LeadStatus, string> = {
 };
 
 export default function LeadsPage() {
-  initLeads(MOCK_LEADS);
-  const [leads, setLeads] = useState<Lead[]>(getLeads());
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [page, setPage] = useState(1);
   const perPage = 5;
   const navigate = useNavigate();
+
+  const loadLeads = () => {
+    getLeads().then(setLeads).catch((err) => toast.error(err.message));
+  };
+
+  useEffect(() => { loadLeads(); }, []);
 
   const filtered = useMemo(() => {
     return leads.filter((l) => {
@@ -32,18 +36,23 @@ export default function LeadsPage() {
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
   const totalPages = Math.ceil(filtered.length / perPage);
 
-  const handleDelete = (id: string) => {
-    deleteLead(id);
-    setLeads(getLeads());
-    toast.success("Lead deleted");
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteLeadApi(id);
+      loadLeads();
+      toast.success("Lead deleted");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
-  const handleStatusChange = (id: string, status: LeadStatus) => {
-    const lead = leads.find((l) => l.id === id);
-    if (lead) {
-      saveLead({ ...lead, status });
-      setLeads(getLeads());
+  const handleStatusChange = async (id: string, status: LeadStatus) => {
+    try {
+      await updateLead(id, { status });
+      loadLeads();
       toast.success("Status updated");
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -122,7 +131,7 @@ export default function LeadsPage() {
                     </select>
                   </td>
                   <td className="p-4 text-muted-foreground hidden lg:table-cell">
-                    {new Date(lead.createdAt).toLocaleDateString()}
+                    {new Date(lead.created_at).toLocaleDateString()}
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

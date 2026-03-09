@@ -1,14 +1,16 @@
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Users, UserPlus, Phone, CheckCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import StatCard from "@/components/StatCard";
-import { getLeads, initLeads } from "@/lib/leads";
-import { MOCK_LEADS } from "@/data/mockLeads";
+import { getLeads, Lead } from "@/lib/leads";
 
 export default function DashboardPage() {
-  initLeads(MOCK_LEADS);
-  const leads = getLeads();
+  const [leads, setLeads] = useState<Lead[]>([]);
+
+  useEffect(() => {
+    getLeads().then(setLeads).catch(console.error);
+  }, []);
 
   const stats = useMemo(() => {
     const total = leads.length;

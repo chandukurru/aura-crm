@@ -1,31 +1,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { saveLead, Lead } from "@/lib/leads";
+import { createLead } from "@/lib/leads";
 import { toast } from "sonner";
 
 export default function AddLeadPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", source: "Website", notes: "" });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email) {
       toast.error("Name and Email are required");
       return;
     }
-    const lead: Lead = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      email: form.email,
-      source: form.source,
-      status: "new",
-      notes: form.notes,
-      createdAt: new Date().toISOString(),
-    };
-    saveLead(lead);
-    toast.success("Lead added!");
-    navigate("/leads");
+    setLoading(true);
+    try {
+      await createLead(form);
+      toast.success("Lead added!");
+      navigate("/leads");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -87,9 +86,10 @@ export default function AddLeadPage() {
             type="submit"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex-1 py-2.5 rounded-lg gradient-primary text-primary-foreground font-semibold text-sm"
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-lg gradient-primary text-primary-foreground font-semibold text-sm disabled:opacity-60"
           >
-            Add Lead
+            {loading ? "Adding..." : "Add Lead"}
           </motion.button>
           <motion.button
             type="button"
